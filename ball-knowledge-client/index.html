@@ -6,32 +6,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Football Guesser</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <style>
+        body,
+        html {
+            font-family: 'Arial', sans-serif;
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #FF6B91, white);
+        }
+
+        #gameResponse,
+        #guessInput,
+        #submitGuess {
+            display: none;
+        }
+
+        .white-box {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button#submitGuess {
+            background-color: lightgray;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container mt-5">
-        <h1>Welcome to Ball Knowledge!</h1>
-        <button id="startGameBtn" class="btn btn-primary">Start Game</button>
+    <div class="container mt-5 white-box">
+        <h1 class="text-center mb-4">Welcome to Ball Knowledge!</h1>
+        <p class="text-center mb-4" id="instruction">Guess the Premier League player (last name) by typing in the space
+            provided! You have 5 more clues to come...</p>
+        <div class="row mb-4">
+            <div class="col-md-6 offset-md-3">
+                <div class="input-group">
+                    <input type="text" id="guessInput" class="form-control" placeholder="Insert Players name here...">
+                    <div class="input-group-append">
+                        <button id="submitGuess" class="btn btn-secondary">
+                            <i class="fas fa-paper-plane"></i> Guess/Skip
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-4">
+            <button id="startGameBtn" class="btn btn-primary btn-lg">
+                <i class="fas fa-play"></i> Generate Player
+            </button>
+        </div>
 
         <div id="gameResponse" class="mt-4">
-            <p>Age: <span id="playerAge"></span></p>
-            <p>Nationality: <span id="playerNationality"></span></p>
-            <input type="text" id="guessInput" placeholder="Guess the player's name">
-            <button id="submitGuess" class="btn btn-secondary">Submit Guess</button>
-            <ul id="hintsList"></ul>
-            <p id="gameOutcome"></p>
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <div class="list-group-item">Age: <span id="playerAge"></span></div>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <div class="list-group-item">Nationality: <span id="playerNationality"></span></div>
+                </div>
+            </div>
+            <div id="hintsList" class="mt-4"></div>
+            <p id="gameOutcome" class="text-center mt-3"></p>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script>
         let playerData = {};
         let hints = [];
         let currentHintIndex = 0;
 
         document.getElementById('startGameBtn').addEventListener('click', function () {
+            confetti.reset();
             document.getElementById('hintsList').innerHTML = "";  // Clearing the list of hints.
             document.getElementById('guessInput').value = "";  // Clearing the guessing input.
             document.getElementById('gameOutcome').innerText = "";  // Clearing the game outcome message.
+
+            // Show the input and submit button
+            document.getElementById('guessInput').style.display = 'block';
+            document.getElementById('submitGuess').style.display = 'block';
+
             fetch('http://localhost:3001/start')
                 .then(response => response.json())
                 .then(data => {
@@ -41,12 +101,15 @@
                             "Height: " + playerData.height,
                             "Weight: " + playerData.weight,
                             "Club: " + playerData.team,
-                            "Position:" + playerData.position,
+                            "Position: " + playerData.position,
                             "Previous Clubs (last 20 years only): " + playerData.previousClubs
                         ];
                         currentHintIndex = 0;
                         document.getElementById('playerAge').innerText = data.age;
                         document.getElementById('playerNationality').innerText = data.nationality;
+
+                        // Display the game response div
+                        document.getElementById('gameResponse').style.display = 'block';
                     } else {
                         document.getElementById('gameResponse').innerText = "No players found!";
                     }
@@ -56,7 +119,6 @@
                 });
         });
 
-         
         document.getElementById('submitGuess').addEventListener('click', function () {
             const guess = document.getElementById('guessInput').value;
 
@@ -74,18 +136,31 @@
                 .then(data => {
                     if (data.correct) {
                         document.getElementById('gameOutcome').innerText = "You won!";
-                        // Optionally redirect to a new page if you have one:
-                        // window.location.href = "/path-to-your-win-page";
+                        // Optionally, you can hide the input and submit button after a win
+                        document.getElementById('guessInput').style.display = 'none';
+                        document.getElementById('submitGuess').style.display = 'none';
+                        confetti({
+                            particleCount: 100,
+                            startVelocity: 30,
+                            spread: 360,
+                            origin: {
+                                x: Math.random(),
+                                // since they fall down, start a bit higher than random
+                                y: Math.random() - 0.2
+                            }
+                        });
                     } else {
                         if (currentHintIndex < hints.length) {
-                            const hintElement = document.createElement("li");
+                            const hintElement = document.createElement("div");
+                            hintElement.className = "list-group-item";
                             hintElement.innerText = hints[currentHintIndex];
                             document.getElementById('hintsList').appendChild(hintElement);
                             currentHintIndex++;
                         } else {
-                            document.getElementById('gameOutcome').innerText = "You lost! The Players name was: " + playerData.name;
-                            // Optionally redirect to a new page if you have one:
-                            // window.location.href = "/path-to-your-lost-page";
+                            document.getElementById('gameOutcome').innerText = "You lost! The Player's name was: " + playerData.name;
+                            // Optionally, you can hide the input and submit button after a loss
+                            document.getElementById('guessInput').style.display = 'none';
+                            document.getElementById('submitGuess').style.display = 'none';
                         }
                     }
                 })
@@ -94,6 +169,7 @@
                 });
         });
     </script>
+
 </body>
 
 </html>
